@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비밀의 정원: 구름 동행기</title>
+    <style>
+        :root {
+            --primary-pink: #ffd1dc;
+            --soft-yellow: #fff9ae;
+            --glass-black: rgba(0, 0, 0, 0.75);
+        }
+
+        body, h1, p { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+            background-color: #222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+        }
+
+        /* 게임 메인 컨테이너 */
+        #game-container {
+            width: 100%;
+            max-width: 800px;
+            height: 100%;
+            max-height: 600px;
+            aspect-ratio: 4 / 3;
+            position: relative;
+            background-color: #444;
+            border: 8px solid var(--primary-pink);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        /* 배경 레이어 */
+        #background {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: background 0.8s ease;
+            z-index: 1;
+        }
+
+        /* 캐릭터 레이어 */
+        #character-layer {
+            position: absolute;
+            bottom: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            transition: all 0.5s ease;
+        }
+        #character {
+            font-size: 120px;
+            filter: drop-shadow(0 10px 10px rgba(0,0,0,0.3));
+        }
+
+        /* 대사창 */
+        #message-box {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            height: 160px;
+            background: var(--glass-black);
+            border: 2px solid var(--primary-pink);
+            border-radius: 15px;
+            padding: 25px;
+            cursor: pointer;
+            z-index: 10;
+            display: none;
+        }
+        #name-tag {
+            color: var(--primary-pink);
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            text-shadow: 1px 1px 2px black;
+        }
+        #dialogue {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        /* 선택지 창 */
+        #choice-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            z-index: 20;
+        }
+        .choice-btn {
+            width: 70%;
+            padding: 18px;
+            background: white;
+            color: #333;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .choice-btn:hover {
+            transform: scale(1.05);
+            background: var(--primary-pink);
+        }
+
+        /* 오버레이 (시작/결과) */
+        #overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            text-align: center;
+            padding: 40px;
+        }
+        #overlay-title { font-size: 2.2rem; color: var(--primary-pink); margin-bottom: 20px; }
+        #overlay-desc { font-size: 1.1rem; line-height: 1.8; margin-bottom: 30px; color: #ddd; }
+        
+        .primary-btn {
+            padding: 15px 40px;
+            background: var(--primary-pink);
+            color: #333;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .primary-btn:hover { background: var(--soft-yellow); transform: translateY(-3px); }
+
+        .fade-in { animation: fadeIn 0.5s ease-in forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="background"></div>
+        <div id="character-layer"><div id="character">☁️</div></div>
+        
+        <div id="message-box" onclick="engine.next()">
+            <div id="name-tag"></div>
+            <p id="dialogue"></p>
+        </div>
+
+        <div id="choice-container"></div>
+
+        <div id="overlay">
+            <h1 id="overlay-title">비밀의 정원<br>길 잃은 구름 동행기</h1>
+            <p id="overlay-desc">당신은 신비로운 정원에서 작은 구름을 만났습니다.<br>이 특별한 여행에서 당신은 어떤 선택을 하게 될까요?</p>
+            <button class="primary-btn" onclick="engine.start()">여행 시작</button>
+        </div>
+    </div>
+
+    <script>
+        const scenario = [
+            { type: 'scene', bg: 'linear-gradient(#a1c4fd, #c2e9fb)', char: '☁️', name: '???', text: '“저기... 혹시 시간 괜찮으시면, 나랑 같이 가줄 수 있어...?”' },
+            { type: 'scene', char: '☁️', name: '나', text: '(발목을 다친 작은 구름이다. 어쩌지?)' },
+            {
+                type: 'choice',
+                choices: [
+                    { text: "“걱정 마, 내가 꼭 붙잡아 줄게.” 손을 꼭 잡는다.", score: 'anxious', next: 3 },
+                    { text: "“그래, 멀지 않으면 같이 가자.” 적당한 거리를 둔다.", score: 'secure', next: 3 },
+                    { text: "“뒤따라오면 길은 알려줄게.” 가끔 뒤돌아본다.", score: 'avoidant', next: 3 },
+                ]
+            },
+            { type: 'scene', bg: 'linear-gradient(#84fab0, #8fd3f4)', char: '☁️', name: '나', text: '(구름과 함께 비밀의 정원 깊숙이 걸어 들어갔다.)' },
+            { type: 'scene', char: '☁️', name: '나', text: '갑자기 하늘이 어둑어둑해지더니, 구름이 회색빛으로 변했다!' },
+            { type: 'scene', bg: 'linear-gradient(#434343, #000000)', char: '⛈️', name: '작은 구름', text: '“우우... 화나... 싫어...!” 소나기를 퍼붓기 시작한다.' },
+            {
+                type: 'choice',
+                choices: [
+                    { text: "“내가 뭐 잘못해서 화난 거야?” 사과부터 한다.", score: 'anxious', next: 7 },
+                    { text: "일단 우산을 꺼내 같이 쓰고, 진정될 때까지 기다린다.", score: 'secure', next: 7 },
+                    { text: "“비 맞기 싫은데...” 혼자 비 피할 곳을 찾아 떠난다.", score: 'avoidant', next: 7 },
+                ]
+            },
+            { type: 'scene', bg: 'linear-gradient(#e0c3fc, #8ec5fc)', char: '☁️', name: '나', text: '소나기가 그치고 안개가 자욱한 갈림길에 도착했다.' },
+            { type: 'scene', char: '☁️', name: '작은 구름', text: '“나는 오른쪽이 맞는 것 같아...”' },
+            {
+                type: 'choice',
+                choices: [
+                    { text: "(구름이 실망할까 봐) 그냥 구름을 따라 오른쪽으로 간다.", score: 'anxious', next: 10 },
+                    { text: "“왜 그렇게 생각했어?” 대화 후 함께 길을 정한다.", score: 'secure', next: 10 },
+                    { text: "“각자 가보고 나중에 만나자.” 내 직관대로 움직인다.", score: 'avoidant', next: 10 },
+                ]
+            },
+            { type: 'end' }
+        ];
+
+        const results = {
+            secure: { title: "☀️ 태양의 수호자", desc: "당신은 안정적인 마음의 중심을 가졌습니다.<br>타인을 신뢰하면서도 자신의 경계를 부드럽게 지킬 줄 아는군요!" },
+            avoidant: { title: "🌙 달빛의 관찰자", desc: "당신은 독립적이고 자유로운 영혼입니다.<br>혼자만의 성벽 안에서 가장 큰 평온함을 느끼는 타입이죠." },
+            anxious: { title: "⭐ 별빛의 추격자", desc: "당신은 따뜻하고 섬세한 감수성을 가졌습니다.<br>연결되어 있다는 느낌을 중요하게 생각하는군요." },
+        };
+
+        class GameEngine {
+            constructor() {
+                this.idx = 0;
+                this.scores = { secure: 0, avoidant: 0, anxious: 0 };
+                this.isChoice = false;
+                this.el = {
+                    bg: document.getElementById('background'),
+                    char: document.getElementById('character'),
+                    msg: document.getElementById('message-box'),
+                    name: document.getElementById('name-tag'),
+                    diag: document.getElementById('dialogue'),
+                    choice: document.getElementById('choice-container'),
+                    overlay: document.getElementById('overlay'),
+                    title: document.getElementById('overlay-title'),
+                    desc: document.getElementById('overlay-desc'),
+                    btn: document.querySelector('.primary-btn')
+                };
+            }
+
+            start() {
+                this.el.overlay.style.display = 'none';
+                this.idx = 0;
+                this.scores = { secure: 0, avoidant: 0, anxious: 0 };
+                this.render();
+            }
+
+            next() {
+                if (this.isChoice) return;
+                this.idx++;
+                this.render();
+            }
+
+            render() {
+                const node = scenario[this.idx];
+                if (!node || node.type === 'end') return this.showResult();
+
+                if (node.type === 'scene') {
+                    this.isChoice = false;
+                    this.el.msg.style.display = 'block';
+                    this.el.choice.style.display = 'none';
+                    if (node.bg) this.el.bg.style.background = node.bg;
+                    if (node.char) this.el.char.textContent = node.char;
+                    this.el.name.textContent = node.name;
+                    this.el.diag.textContent = node.text;
+                } else if (node.type === 'choice') {
+                    this.isChoice = true;
+                    this.el.msg.style.display = 'none';
+                    this.el.choice.innerHTML = '';
+                    this.el.choice.style.display = 'flex';
+                    node.choices.forEach(c => {
+                        const btn = document.createElement('button');
+                        btn.className = 'choice-btn';
+                        btn.textContent = c.text;
+                        btn.onclick = () => {
+                            this.scores[c.score]++;
+                            this.idx = c.next;
+                            this.render();
+                        };
+                        this.el.choice.appendChild(btn);
+                    });
+                }
+            }
+
+            showResult() {
+                const final = Object.keys(this.scores).reduce((a, b) => this.scores[a] > this.scores[b] ? a : b);
+                const res = results[final];
+                this.el.overlay.style.display = 'flex';
+                this.el.overlay.classList.add('fade-in');
+                this.el.title.innerHTML = `여행의 결과<br><span style="color:white">${res.title}</span>`;
+                this.el.desc.innerHTML = res.desc;
+                this.el.btn.textContent = '다시 여행하기';
+                this.el.btn.onclick = () => this.reset();
+            }
+
+            reset() {
+                // 초기 상태로 UI 세팅 후 다시 시작
+                this.el.title.innerHTML = `비밀의 정원<br>길 잃은 구름 동행기`;
+                this.el.desc.innerHTML = `당신은 신비로운 정원에서 작은 구름을 만났습니다.<br>이 특별한 여행에서 당신은 어떤 선택을 하게 될까요?`;
+                this.el.btn.textContent = '여행 시작';
+                this.el.btn.onclick = () => this.start();
+                this.el.msg.style.display = 'none';
+                this.el.bg.style.background = '#444';
+            }
+        }
+
+        const engine = new GameEngine();
+    </script>
+</body>
+</html>
